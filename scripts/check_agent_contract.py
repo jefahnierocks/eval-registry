@@ -177,6 +177,52 @@ for script, payload, validate, label in samples:
         except (ValueError, json.JSONDecodeError) as exc:
             errors.append(f"{label} returned invalid output: {exc}")
 
+# Governed source baseline: declarations and tool identities are mechanically checked.
+require(
+    "provisionally adopts the Jefahnierocks child-repo baseline" in agents.read_text(),
+    "provisional baseline adoption declaration is missing",
+)
+require("**Governed**" in agents.read_text(), "Governed tier is missing")
+require(
+    "public-safe binding" in agents.read_text(), "public host-binding gap is missing"
+)
+require(
+    "private/" in ignore.read_text().splitlines(),
+    "unanchored private directory ignore is missing",
+)
+for relative in (
+    ".editorconfig",
+    ".mise.toml",
+    ".python-version",
+    "requirements-dev.in",
+    "requirements-dev.txt",
+    "scripts/check_repository_security.py",
+    "scripts/run-validation.sh",
+):
+    require(
+        (ROOT / relative).is_file(), f"required baseline file is missing: {relative}"
+    )
+try:
+    tools = tomllib.loads((ROOT / ".mise.toml").read_text())["tools"]
+    require(
+        tools == {"python": "3.13.15", "uv": "0.13.0", "gitleaks": "8.30.1"},
+        "helper tool pins differ from the reviewed baseline",
+    )
+    require(
+        (ROOT / ".python-version").read_text().strip() == tools["python"],
+        "Python pins disagree",
+    )
+    require(
+        (ROOT / "requirements-dev.in").read_text().strip() == "ruff==0.16.7",
+        "Ruff input pin differs",
+    )
+    lock = (ROOT / "requirements-dev.txt").read_text()
+    require(
+        "ruff==0.16.7" in lock and "--hash=sha256:" in lock, "Ruff hash lock is missing"
+    )
+except (OSError, ValueError, KeyError, TypeError):
+    errors.append("helper tool configuration cannot be validated")
+
 if errors:
     for error in errors:
         print(f"FAIL: {error}")
