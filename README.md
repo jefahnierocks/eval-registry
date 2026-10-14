@@ -88,3 +88,10 @@ python3 -m unittest discover -s tests -v
 ```
 
 No command above contacts an external service.
+
+## Ownership and license
+
+The canonical repository is [jefahnierocks/eval-registry](https://github.com/jefahnierocks/eval-registry).
+Source is licensed under [Apache-2.0](LICENSE). Organization ownership and licensing
+do not open signer, external-authority, or record-publication permissions; the
+authorization-state contract remains authoritative.
