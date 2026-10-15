@@ -4,12 +4,14 @@
 from __future__ import annotations
 
 import json
+import os
+import stat
+import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-IGNORED_PATH_PARTS = {".git", ".ruff_cache", ".pytest_cache", "__pycache__"}
 
 REQUIRED_FILES = {
     "README.md",
@@ -148,19 +150,108 @@ def is_record_path(relative_path: str) -> bool:
     return any(relative_path.startswith(prefix) for prefix in FORBIDDEN_D2_PREFIXES)
 
 
+class SourceInspectionError(RuntimeError):
+    """Source names or metadata could not be safely inspected."""
+
+
+def _refuse_forbidden_roots() -> None:
+    for prefix in FORBIDDEN_D2_PREFIXES:
+        try:
+            (ROOT / prefix.removesuffix("/")).lstat()
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            raise SourceInspectionError("D2 root metadata inspection failed") from exc
+        raise SourceInspectionError("D2 forbids a record/trust root")
+
+
 def _tracked_source_files() -> list[Path]:
-    return sorted(
-        path
-        for path in ROOT.rglob("*")
-        if path.is_file()
-        and not IGNORED_PATH_PARTS.intersection(path.relative_to(ROOT).parts)
-        and path.suffix not in {".pyc", ".pyo"}
-    )
+    """List Git source names, vet the entire snapshot, then permit content reads."""
+    _refuse_forbidden_roots()
+    try:
+        result = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(ROOT),
+                "ls-files",
+                "--cached",
+                "--others",
+                "--exclude-standard",
+                "-z",
+            ],
+            capture_output=True,
+            check=False,
+            timeout=30,
+            env={
+                **{
+                    name: os.environ[name]
+                    for name in (
+                        "PATH",
+                        "HOME",
+                        "TMPDIR",
+                        "LANG",
+                        "LC_ALL",
+                        "SYSTEMROOT",
+                    )
+                    if name in os.environ
+                },
+                "GIT_CONFIG_GLOBAL": os.devnull,
+                "GIT_CONFIG_SYSTEM": os.devnull,
+                "GIT_CONFIG_NOSYSTEM": "1",
+            },
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise SourceInspectionError("Git source enumeration failed") from exc
+    if result.returncode or (result.stdout and not result.stdout.endswith(b"\0")):
+        raise SourceInspectionError("Git source enumeration failed")
+    try:
+        names = sorted(
+            {raw.decode("utf-8") for raw in result.stdout.split(b"\0") if raw}
+        )
+    except UnicodeError as exc:
+        raise SourceInspectionError("source path encoding is unsafe") from exc
+    paths: list[Path] = []
+    # Validate every name before even inspecting its target's metadata.
+    for name in names:
+        parts = name.split("/")
+        if (
+            PurePosixPath(name).is_absolute()
+            or "\\" in name
+            or any(part in {"", ".", ".."} for part in parts)
+        ):
+            raise SourceInspectionError("source path is unsafe")
+        if any(part.casefold() == "private" for part in parts[:-1]):
+            raise SourceInspectionError("private source directory is forbidden")
+    for name in names:
+        parts = name.split("/")
+        path = ROOT
+        for index, part in enumerate(parts):
+            path = path / part
+            try:
+                mode = path.lstat().st_mode
+            except OSError as exc:
+                raise SourceInspectionError(
+                    "source metadata is missing or unreadable"
+                ) from exc
+            if stat.S_ISLNK(mode):
+                raise SourceInspectionError("source symlink is forbidden")
+            expected = stat.S_ISREG if index == len(parts) - 1 else stat.S_ISDIR
+            if not expected(mode):
+                raise SourceInspectionError(
+                    "source entry is not a regular file or directory"
+                )
+        paths.append(path)
+    return paths
 
 
 def validate_repository() -> list[str]:
     errors: list[str] = []
-    present = {path.relative_to(ROOT).as_posix() for path in _tracked_source_files()}
+    try:
+        source_files = _tracked_source_files()
+    except SourceInspectionError as exc:
+        return [str(exc)]
+    present = {path.relative_to(ROOT).as_posix() for path in source_files}
 
     missing = sorted(REQUIRED_FILES - present)
     errors.extend(f"missing required file: {path}" for path in missing)
@@ -173,8 +264,8 @@ def validate_repository() -> list[str]:
     for relative in sorted(path for path in present if path.endswith(".json")):
         try:
             value = load_json(ROOT / relative)
-        except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
-            errors.append(f"invalid exact JSON in {relative}: {exc}")
+        except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
+            errors.append("invalid exact JSON in a source file")
             continue
         if relative.startswith("schemas/"):
             if not isinstance(value, dict):
@@ -184,19 +275,21 @@ def validate_repository() -> list[str]:
             elif value.get("additionalProperties") is not False:
                 errors.append(f"top-level schema is not closed: {relative}")
 
-    try:
-        state = load_json(ROOT / "policy/authorization-state.json")
-    except (OSError, UnicodeError, ValueError, json.JSONDecodeError) as exc:
-        errors.append(f"cannot read authorization state: {exc}")
-    else:
-        errors.extend(validate_authorization_state(state))
+    if "policy/authorization-state.json" in present:
+        try:
+            state = load_json(ROOT / "policy/authorization-state.json")
+        except (OSError, UnicodeError, ValueError, json.JSONDecodeError):
+            errors.append("cannot read exact authorization state")
+        else:
+            if validate_authorization_state(state):
+                errors.append("authorization state violates the closed D2 contract")
 
-    for path in _tracked_source_files():
+    for path in source_files:
         relative = path.relative_to(ROOT).as_posix()
         try:
             text = path.read_text(encoding="utf-8")
-        except UnicodeDecodeError:
-            errors.append(f"binary/non-UTF-8 content is forbidden in D2: {relative}")
+        except (OSError, UnicodeError):
+            errors.append("unreadable or non-UTF-8 source is forbidden in D2")
             continue
         for marker in GENERIC_PUBLIC_BOUNDARY_MARKERS:
             if marker.casefold() in text.casefold():

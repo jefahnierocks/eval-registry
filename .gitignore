@@ -6,3 +6,8 @@ __pycache__/
 
 # Personal Claude Code overrides
 .claude/settings.local.json
+
+# Repository-local tools and non-public working material
+.venv/
+.cache/
+private/
