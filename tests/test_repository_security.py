@@ -18,11 +18,23 @@ security = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(security)
 
 
-def git(repo: Path, *arguments: str) -> bytes:
+def fixture_environment() -> dict[str, str]:
+    allowed = ("PATH", "HOME", "TMPDIR", "LANG", "LC_ALL", "SYSTEMROOT")
+    environment = {name: os.environ[name] for name in allowed if name in os.environ}
+    environment.update(
+        GIT_CONFIG_GLOBAL=os.devnull,
+        GIT_CONFIG_SYSTEM=os.devnull,
+        GIT_CONFIG_NOSYSTEM="1",
+    )
+    return environment
+
+
+def git(repo: Path, *arguments: str, check: bool = True) -> bytes:
     return subprocess.run(
         ["git", "-C", str(repo), *arguments],
+        env=fixture_environment(),
         capture_output=True,
-        check=True,
+        check=check,
         timeout=10,
     ).stdout
 
