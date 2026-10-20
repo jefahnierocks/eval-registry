@@ -1,0 +1,37 @@
+spec_version: "1"
+project:
+  id: eval-registry
+  display_name: "Evaluation Registry"
+  owner_entity: jefahnierocks
+role: canonical
+canonical: null
+peers: []
+status:
+  posture: public-repo
+  operational_state: unknown
+  local_phase: "D2 public scaffold; Specification 1 source candidate; signer, external authority and record publication remain closed"
+  as_of: "2026-10-17"
+authority:
+  status_of_record: "README.md"
+presentation:
+  visibility: public-available
+  public_alias: null
+  link_policy: link-ok
+development:
+  platforms: []
+  commands:
+    setup: null
+    check:
+      runner: mise
+      target: "check"
+    test: null
+    build: null
+    dev: null
+    format_check: null
+    format_write: null
+  environment:
+    owner: mise
+    template: null
+    secret_launcher: null
+  stacks: {}
+  host_requirements: []

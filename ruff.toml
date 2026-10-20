@@ -1,3 +1,9 @@
+extend-exclude = ["vendor/project-manifest"]
+
 # Ruff configuration for eval-registry (adopted 2026-07-17). Uses ruff defaults.
 [lint.per-file-ignores]
 "tests/**" = ["E402"]
+
+# Runtime isolation must be checked before importing the adapter/setup libraries.
+"scripts/check_project_manifest.py" = ["E402"]
+"scripts/prepare_manifest_git.py" = ["E402"]
