@@ -223,6 +223,36 @@ try:
 except (OSError, ValueError, KeyError, TypeError):
     errors.append("helper tool configuration cannot be validated")
 
+# Specification 1 is a source candidate; native acceptance remains separate.
+for relative in (
+    "project.yaml",
+    "scripts/check_project_manifest.py",
+    "vendor/project-manifest/bootstrap/release_verifier.py",
+    "vendor/project-manifest/release-1/release.json",
+):
+    require(
+        (ROOT / relative).is_file(), f"interface candidate file missing: {relative}"
+    )
+require(
+    "Specification 1 Release 1" in agents.read_text(),
+    "public interface candidate guidance is missing",
+)
+try:
+    interface_config = tomllib.loads((ROOT / ".mise.toml").read_text())
+    interface_settings = interface_config.get("settings", {})
+    require(
+        interface_settings.get("auto_install") is False
+        and interface_settings.get("exec_auto_install") is False
+        and interface_settings.get("task", {}).get("run_auto_install") is False,
+        "source checks must disable automatic mise tool installation",
+    )
+    require(
+        interface_config["tasks"]["check"]["env"] == {"MISE_EXEC_AUTO_INSTALL": "0"},
+        "source task environment guard is missing",
+    )
+except (OSError, ValueError, KeyError, TypeError):
+    errors.append("interface source task is unavailable")
+
 if errors:
     for error in errors:
         print(f"FAIL: {error}")

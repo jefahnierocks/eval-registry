@@ -5,3 +5,13 @@ gitleaks = "8.30.1"
 
 [env]
 UV_CACHE_DIR = "{{config_root}}/.cache/uv"
+
+[settings]
+auto_install = false
+exec_auto_install = false
+task.run_auto_install = false
+
+[tasks.check]
+description = "Run the prepared source gate and pinned public declaration check"
+run = "export PATH=\"$PWD/.venv/bin:$PATH\"\nbash scripts/run-validation.sh"
+env = { MISE_EXEC_AUTO_INSTALL = "0" }

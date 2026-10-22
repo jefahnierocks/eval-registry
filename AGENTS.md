@@ -1,5 +1,35 @@
 # Public evaluation registry agent contract
 
+## Specification 1 source candidate
+
+The root declaration uses the full Specification 1 Release 1 shape. This is a
+source candidate, not adoption acceptance or a change to baseline 0.1.0.
+The independent pinned binding lives in `scripts/check_project_manifest.py` and
+`vendor/project-manifest/`; immutable vendor bytes remain scanned for security
+and public boundaries. The existing public-safe host binding remains unresolved.
+
+`MISE_EXEC_AUTO_INSTALL=0 mise run check` aliases the existing canonical gate.
+Project-local mise settings disable automatic tool installation before task
+resolution. Use already prepared tools only; do not install, trust or repair from
+a source check. The isolated adapter requires an explicit UTC reference date;
+the gate captures one date for it. A linked worktree requires explicit
+`PROJECT_MANIFEST_COMMON_DIR` authority. `PROJECT_MANIFEST_GIT` may select an
+already prepared native Git at least 2.56. No declaration grants execution,
+provider, scientific, signer, publication or deployment authority.
+
+The phase/date mirror comes from the single `Interface source phase (DATE): ...`
+line in the existing status authority. Updating that line and `project.yaml`
+does not require changing validator prose. Worktree mode reports separately
+hashed current native-source bytes; staged/revision modes leave that assessment
+`not_checked`. They do not bind working configuration to the selected tree.
+The full native gate and its reviewed source/CI checkout must be qualified
+independently; the nested released diagnostics never imply those qualifications.
+
+Qualification needs focused refusal tests, independent review, complete reviewed
+working/index observations and the existing full source gate. Untracked files do
+not enter released acquisition; intent-to-add is unsupported. Keep exact-head
+hosted and human publication gates before merge. No hook installation is implied.
+
 ## Purpose and public boundary
 
 This public repository owns the append-only commitment index, registration schemas, verification policy, authorization-state contract, and public discoverability. It does not own evaluation execution, model routing, model bytes, deployment state, evidence analysis, or operational traces.

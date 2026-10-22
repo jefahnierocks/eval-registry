@@ -1,5 +1,11 @@
 # Eval Registry
 
+Interface source phase (2026-10-17): D2 public scaffold; Specification 1 source candidate; signer, external authority and record publication remain closed.
+
+This interface candidate is not qualified or published. Existing source, host-binding,
+scientific and operational holds remain in force. Empty platform declarations make
+no portability claim; the operational-state field makes no live-state assertion.
+
 Eval Registry is a public commitment-plane repository for discoverable, append-only evaluation
 registration records. It is intentionally separate from evaluation execution, model serving,
 deployment lifecycle, evidence analysis, and trace storage.
@@ -137,3 +143,6 @@ The canonical repository is [jefahnierocks/eval-registry](https://github.com/jef
 Source is licensed under [Apache-2.0](LICENSE). Organization ownership and licensing
 do not open signer, external-authority, or record-publication permissions; the
 authorization-state contract remains authoritative.
+
+See [Specification 1 source binding and qualification](docs/project-manifest.md)
+for the independent release, prepared-tool boundaries and remaining gates.
